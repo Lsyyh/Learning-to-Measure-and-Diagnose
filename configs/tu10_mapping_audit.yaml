@@ -1,0 +1,24 @@
+version: thyroidxl_tu10_relationship_audit_v2
+scope: development_protocol_only_no_endpoint_labels
+workbook:
+  path: ${CBM_DATA_ROOT}/TN3K/metadata/TU1.0_S1.xlsx
+  commit: 17e21abbe781090a8d704fc2736d49503763d181
+  sha256: 95481193f5828b32995cda149d123990a1b584fefcfeaac1fb18b5e952a5f76f
+inventory:
+  author_common_nonshape_features: 93
+  separate_pixel_space_shape2d_extension: 9
+  expected_total: 102
+relationships:
+  expected_rows: 301
+  evidence_classes:
+    - author_explicit
+    - semantic_but_no_direction
+    - unsupported
+  allow_endpoint_learned_definition: false
+  allow_fuzzy_executable_mapping: false
+  allow_inferred_direction: false
+acceptance:
+  retain_all_relationship_rows: true
+  retain_all_inventory_features: true
+  report_technical_mapping_separately: true
+  official_test_records_used: 0

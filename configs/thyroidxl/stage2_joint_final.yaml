@@ -1,0 +1,69 @@
+dataset: thyroidxl
+protocol: r2_stage2_joint_final_thyroidxl_v1
+status: frozen_method_of_record_stage2_joint_consistent
+scope: thyroidxl_final_train_validation_fit_no_test_access
+run_name: r2_thyroidxl_stage2_joint_final
+data:
+  root: experiments/data/thyroidxl
+  manifest: development_split_v1/manifest_development_split_v1.csv
+  inventory: raw_audit_v1/tu10_inventory_102.csv
+  expected_train_frames: 7571
+  expected_validation_frames: 1913
+  radiomics:
+    features: radiomics_native_v1/radiomics_features_native_v1.csv
+    required_columns:
+      radiomics_version: thyroidxl_tu10_actual93_plus_shape2d9_native_zscore_bin0075_pixelspace_v1
+model:
+  name: ThyroidXLConvNeXtRadiomicsRegressor
+  dropout: 0.1
+  groups:
+    geometry: [shape2D]
+    intensity: [firstorder]
+    texture: [glcm, glrlm, glszm, gldm, ngtdm]
+warm_start:
+  recipe: train_stage1_final.py --arm W over stage1_final.yaml, 80-epoch budget
+  required_epochs: 80
+  run_dir: experiments/ours/thyroidxl/warmup/family_balanced/seed{seed}
+stage2:
+  student_table: experiments/ours/thyroidxl/cells/family_balanced/seed{seed}/student.csv
+  oracle_table: experiments/data/thyroidxl/radiomics_native_v1/radiomics_features_native_v1.csv
+  oracle_split:
+    column: split
+    value: development
+  dictionary_audit: experiments/data/thyroidxl/tu10_mapping_audit_v2/relationship_audit_301.csv
+target_transform:
+  method: rank_gauss
+augmentation:
+  horizontal_flip_prob: 0.5
+  max_rotation_degrees: 7.0
+  max_translate_fraction: 0.04
+  scale_range: [0.95, 1.05]
+  intensity_scale_range: [0.9, 1.1]
+  intensity_shift: 0.1
+  noise_std: 0.03
+training:
+  epochs: 20
+  warmup_epochs: 2
+  batch_size: 8
+  bag_frame_budget: 16
+  workers: 8
+  device: cuda:0
+  amp: true
+  learning_rate: 0.0001
+  weight_decay: 0.0005
+  checkpoint_metric: validation_mean_r2_over_102
+  checkpoint_selection: best_epoch_validation_full_102_target_transformed_mean_r2
+joint:
+  lambda_cls: 0.5
+  # lambda_anchor 3.0: validation-frozen operating point (selected on validation).
+  lambda_anchor: 3.0
+  member_anchor_multiplier: 1.0
+  dict_anchor_multiplier: 2.0
+  head_initialization: v1_oof_pipeline_affine
+  head_standardization: frozen
+evaluation:
+  aggregation: patient_level_raw_prediction
+  endpoint: unified_joint_head
+  selection_disclosure: validation_split_used_for_checkpoint_selection_only
+  official_test_accessed: false
+  official_test_used: false

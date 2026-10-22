@@ -1,0 +1,60 @@
+dataset: tn3k
+protocol: r2_stage1_final_tn3k_v1
+status: frozen_r2_final_model_protocol
+scope: tn3k_final_train_validation_fit_source_test_untouched
+run_name: r2_tn3k_stage1_final
+data:
+  root: experiments/data/tn3k
+  manifest: final_split_v1/manifest_final_split_v1.csv
+  inventory: train_manifest_v1/tu10_inventory_102.csv
+  split_column: final_partition
+  train_value: train
+  validation_value: validation
+  test_value: test
+  required_columns:
+    source_split: trainval
+  expected_train_frames: 2303
+  expected_validation_frames: 576
+  radiomics:
+    features: radiomics_native_v1/radiomics_features_native_v1.csv
+    required_columns:
+      radiomics_version: tn3k_tu10_actual93_plus_shape2d9_native_zscore_bin0075_pixelspace_v1
+model:
+  name: ThyroidXLConvNeXtRadiomicsRegressor
+  pretrained: true
+  dropout: 0.1
+  groups:
+    geometry: [shape2D]
+    intensity: [firstorder]
+    texture: [glcm, glrlm, glszm, gldm, ngtdm]
+target_transform:
+  method: rank_gauss
+augmentation:
+  horizontal_flip_prob: 0.5
+  max_rotation_degrees: 7.0
+  max_translate_fraction: 0.04
+  scale_range: [0.95, 1.05]
+  intensity_scale_range: [0.9, 1.1]
+  intensity_shift: 0.1
+  noise_std: 0.03
+training:
+  oof: false
+  epochs: 100
+  batch_size: 8
+  workers: 8
+  device: cuda:0
+  amp: true
+  learning_rate: 0.0001
+  weight_decay: 0.0005
+  warmup_epochs: 5
+  checkpoint_metric: validation_mean_r2_over_102
+  checkpoint_selection: best_epoch_validation_full_102_target_transformed_mean_r2
+  monitor_slice: final_partition=validation stratified slice of source trainval
+  loss:
+    conventional: mean_over_102
+    family_balanced: equal_weighted_group_means
+evaluation:
+  aggregation: image_level_raw_prediction
+  selection_disclosure: final_validation_split_used_for_checkpoint_selection_only
+  source_test_accessed: false
+  official_test_used: false

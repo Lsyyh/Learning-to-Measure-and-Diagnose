@@ -1,0 +1,9 @@
+# raw datasets and generated artifacts are never committed
+data/
+experiments/
+runs/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/

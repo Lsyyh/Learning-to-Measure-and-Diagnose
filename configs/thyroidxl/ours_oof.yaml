@@ -1,0 +1,99 @@
+# Ours OOF cross-fitting + warm-up campaign config (release copy of the
+# executed protocol; governance fields removed).
+dataset: thyroidxl
+protocol: ours_oof_thyroidxl_release
+data:
+  root: experiments/data/thyroidxl
+  manifest: development_split_v1/manifest_development_split_v1.csv
+  inventory: raw_audit_v1/tu10_inventory_102.csv
+  expected_train_frames: 7571
+  expected_validation_frames: 1913
+  radiomics:
+    features: radiomics_native_v1/radiomics_features_native_v1.csv
+    required_columns:
+      radiomics_version: thyroidxl_tu10_actual93_plus_shape2d9_native_zscore_bin0075_pixelspace_v1
+oof:
+  output_root: experiments/ours/thyroidxl/oof
+  assignment:
+    source: deterministic_stratified_group_kfold_frozen_once
+    path: experiments/ours/thyroidxl/oof/oof_assignment.csv
+    folds: 3
+    seed: 42
+    split_unit: patient
+    guards:
+      official_split: train
+      split: development
+  arms:
+  - conventional
+  - family_balanced
+  seeds:
+  - 42
+  - 43
+  - 44
+  snapshot_epochs:
+  - 80
+  - 100
+  warmup_epochs: 80
+  epochs_total: 100
+  checkpoint_rule: validation_best_r2_per_phase_outer_heldout_prediction_only
+model:
+  name: ThyroidXLConvNeXtRadiomicsRegressor
+  pretrained: true
+  dropout: 0.1
+  groups:
+    geometry:
+    - shape2D
+    intensity:
+    - firstorder
+    texture:
+    - glcm
+    - glrlm
+    - glszm
+    - gldm
+    - ngtdm
+target_transform:
+  method: rank_gauss
+  fit: fold_training_patients_only
+augmentation:
+  horizontal_flip_prob: 0.5
+  max_rotation_degrees: 7.0
+  max_translate_fraction: 0.04
+  scale_range:
+  - 0.95
+  - 1.05
+  intensity_scale_range:
+  - 0.9
+  - 1.1
+  intensity_shift: 0.1
+  noise_std: 0.03
+training:
+  batch_size: 8
+  workers: 8
+  device: cuda:0
+  amp: true
+  learning_rate: 0.0001
+  weight_decay: 0.0005
+  warmup_epochs: 5
+  scheduler: warmup_cosine_80_then_fresh_cosine_20
+  loss:
+    conventional: mean_over_102
+    family_balanced: equal_weighted_group_means
+warmup:
+  script: scripts/training/train_stage1_final.py
+  config: configs/thyroidxl/stage1_final.yaml
+  output_root: experiments/ours/thyroidxl/warmup
+  epochs: 80
+  arms:
+  - conventional
+  - family_balanced
+  seeds:
+  - 42
+  - 43
+  - 44
+  checkpoint_rule: best_epoch_validation_full_102_target_transformed_mean_r2
+evaluation:
+  aggregation: frame_level_raw_prediction_pooled_downstream
+  validation_role: checkpoint_selection_by_mean_transformed_r2_over_102
+  held_out_role: prediction_only_no_checkpoint_selection
+  official_test_accessed: false
+  official_test_used: false
